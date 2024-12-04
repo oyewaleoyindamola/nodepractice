@@ -2,7 +2,8 @@ const express = require('express');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 const courses = require('./model/courses.model');
-const teachers = require('./model/teachers.model')
+const teachers = require('./model/teachers.model');
+const projects = require('./model/project.model')
 
 const app = express();
 dotenv.config();
@@ -21,24 +22,24 @@ app.use(express.json());
 //     res.send(courses);
 // });
 
-app.post('/courses', async (req, res) => {
-    try {
-        const existingCourse = await courses.findOne({ coursetitle: req.body.coursetitle });
-        console.log(existingCourse)
-        if (existingCourse) { res.status(404).send('Course already exists.'); }
-        else {
-            const course = {
-                coursetitle: req.body.coursetitle,
-                courseDetails: req.body.courseDetails,
-            };
-            const newCourse = new courses(course)
-            await newCourse.save();
-            return res.status(200).send(newCourse);
-        }
-    } catch (error) {
-        res.send(error)
-    }
-});
+// app.post('/courses', async (req, res) => {
+//     try {
+//         const existingCourse = await courses.findOne({ coursetitle: req.body.coursetitle });
+//         console.log(existingCourse)
+//         if (existingCourse) { res.status(404).send('Course already exists.'); }
+//         else {
+//             const course = {
+//                 coursetitle: req.body.coursetitle,
+//                 courseDetails: req.body.courseDetails,
+//             };
+//             const newCourse = new courses(course)
+//             await newCourse.save();
+//             return res.status(200).send(newCourse);
+//         }
+//     } catch (error) {
+//         res.send(error)
+//     }
+// });
 
 app.post('/teachers', async (req, res) => {
     try {
@@ -157,6 +158,40 @@ app.post('/teachers', async (req, res) => {
 
 // });
 
+app.post('/courses', async (req, res) => {
+    try {
+        const existingCourse = await courses.findOne({ coursetitle: req.body.coursetitle});
+        if(existingCourse) res.status(404).send('Course already exists')
+            const course = {
+                coursetitle: req.body.coursetitle, 
+                courseDetails: req.body.courseDetails
+            };
+            const newCourse = new courses(course)
+            await newCourse.save();
+            console.log(newCourse)
+            return res.status(200).send(newCourse)
+    } catch (error) {
+        res.send(error)
+    }
+});
+
+app.post('/projects', async (req, res) => {
+    try {
+        const existingProject = await projects.findOne({projectName: req.params.projectName});
+        if(existingProject)res.status(404).send('Project already exists')
+        const project = {
+            projectName: req.body.projectName,
+            company: req.body.company,
+            dueDate: req.body.dueDate
+        }
+        const newProject = new projects(project)
+        await newProject.save()
+        return res.status(200).send(newProject)
+    } catch (error) {
+        res.send(error)
+        res.status(500).send('An error occurred while updating the project');
+    }
+})
 const CONNECTION_STRING = process.env.CONNECTION_STRING
 mongoose.connect(CONNECTION_STRING)
     .then(() => console.log('MongoDB connected'))
