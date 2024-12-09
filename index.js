@@ -2,8 +2,9 @@ const express = require('express');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 const courses = require('./model/courses.model');
-const teachers = require('./model/teachers.model');
-const projects = require('./model/project.model')
+const {Teachers, teachersSchema} = require('./model/teachers.model');
+const projects = require('./model/project.model');
+const {Students, studentSchema} = require('./model/students.model')
 
 const app = express();
 dotenv.config();
@@ -44,10 +45,15 @@ app.use(express.json());
 app.post('/teachers', async (req, res) => {
     try {
         const { name, course } = req.body
-        const existingTeachers = await teachers.findOne({name});
+        const existingTeachers = await Teachers.findOne({name});
         if (existingTeachers) 
         return res.status(404).send('Teacher already exists');
-        const newTeacher = new teachers({ name, course })
+        const newTeacher = new Teachers({ name, course })
+
+        const allowedCourses = teachersSchema.path('course').options.enum;
+        if(!allowedCourses.includes(course)) {
+            return res.status(400).send(`${course} is not a valid course`);
+        }
         await newTeacher.save()
         res.status(200).send(newTeacher)
     } catch (error) {
@@ -83,7 +89,7 @@ app.post('/teachers', async (req, res) => {
 //         if (!ObjectId.isValid(id)) {
 //             return res.status(400).send('Invalid teacher ID');
 //         }
-//         const updatedTeacher = await teachers.findByIdAndUpdate(
+//         const updatedTeacher = await Teachers.findByIdAndUpdate(
 //             new ObjectId(id),
 //             { name, course },
 //             { new: true, runValidators: true }
@@ -126,7 +132,7 @@ app.post('/teachers', async (req, res) => {
 //         if(!ObjectId.isValid(id)) {
 //             return res.status(400).send('Invalid course ID'); 
 //         };
-//         const deletedTeacher = await teachers.findByIdAndDelete(
+//         const deletedTeacher = await Teachers.findByIdAndDelete(
 //             new ObjectId(id),
 //         );
 //         if(!deletedTeacher) {
@@ -177,8 +183,9 @@ app.post('/courses', async (req, res) => {
 
 app.post('/projects', async (req, res) => {
     try {
-        const existingProject = await projects.findOne({projectName: req.params.projectName});
-        if(existingProject)res.status(404).send('Project already exists')
+        const existingProject = await projects.findOne({projectName: req.body.projectName});
+        if(existingProject)
+        return res.status(404).send('Project already exists')
         const project = {
             projectName: req.body.projectName,
             company: req.body.company,
@@ -191,7 +198,99 @@ app.post('/projects', async (req, res) => {
         res.send(error)
         res.status(500).send('An error occurred while updating the project');
     }
-})
+});
+app.get('/projects', async (req, res) => {
+    const project = await projects.find()
+    if(!project)res.status(404).send('projects not found')
+        res.status(200).send({
+            responseCode: 200,
+            message: 'Projects found',
+            data: project
+    });
+});
+app.put('/projects/:id', async (req, res) => {
+    try {
+        const { id } = req.params
+        const {projectName, company, dueDate} = req.body
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).send('Invalid project ID');
+        }
+        const updatedProject = await projects.findByIdAndUpdate(
+            new ObjectId(id),
+            {projectName, company, dueDate},
+            {new: true, runValidators: true}
+        );
+        if(!updatedProject)
+        { return res.status(404).send('Project not found')
+
+        }
+        res.status(200).send({ message: 'Project updated successfully', project: updatedProject });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('An error occurred while updating the project');
+    } 
+});
+app.delete('/projects/delete/:id', async (req, res) => {
+    try {
+        const {id} = req.params;
+        if(!ObjectId.isValid(id)) {
+        return res.status(400).send('Invalid course ID'); 
+        };
+        const deletedProject = await projects.findByIdAndDelete(
+            new ObjectId(id),
+        );
+        if(!deletedProject) {
+            return res.status(200).send({
+                message: 'Project deleted successfully'  });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('An error occurred while updating the teacher');
+    }
+});
+app.post('/students', async (req, res) => {
+    try {
+        const { firstName, lastName, email, grade, gender } = req.body;
+        const test = { firstName, lastName, email, grade, gender };
+
+        // Check if student already exists
+        const existingStudent = await Students.findOne({ email });
+        if (existingStudent) {
+            return res.status(404).send('Student already exists');
+        }
+
+        const newStudent = new Students(test);
+
+        // Retrieve allowed grade values from schema
+        const allowedGrades = studentSchema.path('grade').options.enum;
+        if (!allowedGrades.includes(grade)) {
+            return res.status(400).send(`${grade} is not a valid grade`);
+        }
+
+        // Retrieve allowed gender values from schema
+        // Check gender validity
+        if (newStudent.gender === "Male" || newStudent.gender === "Female") {
+            await newStudent.save();
+            return res.status(200).send({
+                responseCode: 200,
+                message: 'Student created',
+                data: newStudent,
+            });
+        } else {
+            return res.status(400).send(newStudent.gender + " is not a valid gender");
+        }
+
+    } catch (error) {
+        res.status(500).send({
+            responseCode: 500,
+            message: 'Internal server error',
+            error: error.message,
+        });
+    }
+});
+
+
+
 const CONNECTION_STRING = process.env.CONNECTION_STRING
 mongoose.connect(CONNECTION_STRING)
     .then(() => console.log('MongoDB connected'))

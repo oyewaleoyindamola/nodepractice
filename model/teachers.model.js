@@ -9,11 +9,11 @@ const teachersSchema = new mongoose.Schema({
     },
     course: {
         type: String,
-        minlength: 4,
+        enum: ['Law', 'History', 'English', 'Music', 'Finance'],
         required: 'course is required'
     }
 })
 
 const Teachers  = mongoose.model('Teachers', teachersSchema);
 
-module.exports =Teachers;
+module.exports ={Teachers, teachersSchema}
